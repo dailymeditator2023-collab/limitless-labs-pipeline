@@ -49,6 +49,8 @@ def scrape_reviews_playwright(amazon_url: str, max_reviews: int = 15, browser_co
         "helpful_reviews_raw": "",
         "top_pros": "",
         "top_cons": "",
+        "price": None,  # Amazon price in INR
+        "price_per_unit": None,  # Price per unit if shown
     }
     
     # Extract ASIN
@@ -103,6 +105,34 @@ def scrape_reviews_playwright(amazon_url: str, max_reviews: int = 15, browser_co
         if 'signin' in page.url.lower() or 'sign-in' in page.title().lower():
             log.warning("  Redirected to sign-in page")
             return result
+        
+        # Extract price
+        try:
+            price_selectors = [
+                '#corePriceDisplay_desktop_feature_div .a-price-whole',
+                '#corePrice_desktop .a-price-whole',
+                '.a-price-whole',
+                '#priceblock_ourprice',
+                '#priceblock_dealprice',
+            ]
+            for selector in price_selectors:
+                price_el = page.query_selector(selector)
+                if price_el:
+                    price_text = price_el.inner_text().replace(',', '').replace('₹', '').strip()
+                    if price_text:
+                        try:
+                            result["price"] = float(price_text.split('.')[0])
+                            log.info(f"  Price: ₹{result['price']}")
+                            break
+                        except ValueError:
+                            pass
+            
+            # Try to get unit price (e.g., "₹1.50 per gram")
+            unit_price_el = page.query_selector('.a-price-per-unit, [data-a-strike="true"]')
+            if unit_price_el:
+                result["price_per_unit"] = unit_price_el.inner_text().strip()
+        except Exception as e:
+            log.warning(f"  Could not extract price: {e}")
         
         # Extract star distribution from histogram
         try:

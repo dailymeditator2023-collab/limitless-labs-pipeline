@@ -64,6 +64,26 @@ def get_products_with_amazon_urls(limit=50):
     return products
 
 
+def update_product_price(product_id: str, price: float):
+    """Update the Products table with price data."""
+    if not price:
+        return
+    
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    update_url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{TBL_PRODUCTS}/{product_id}"
+    fields = {"MRP (₹)": price}
+    
+    try:
+        requests.patch(update_url, headers=headers, json={"fields": fields})
+        log.info(f"    Updated product price: ₹{price}")
+    except Exception as e:
+        log.warning(f"    Failed to update price: {e}")
+
+
 def update_raw_research(product_id: str, review_data: dict, airtable):
     """Update the Raw Research table with review data."""
     # Find or create raw research record for this product
@@ -71,6 +91,10 @@ def update_raw_research(product_id: str, review_data: dict, airtable):
         "Authorization": f"Bearer {AIRTABLE_TOKEN}",
         "Content-Type": "application/json"
     }
+    
+    # Also update product price if available
+    if review_data.get("price"):
+        update_product_price(product_id, review_data["price"])
     
     # Search for existing record
     search_url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{TBL_RAW_RESEARCH}"

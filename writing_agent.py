@@ -151,6 +151,8 @@ def update_product(record_id, review, summary):
 REVIEW_PROMPT = """You are writing for Limitless Labs — think Wirecutter for supplements, not Wikipedia. Direct, confident, opinionated. A knowledgeable friend who's done the research.
 
 Write a review for: {brand} — {product_name}
+Category: {category}
+Price: ₹{price} | Servings: {servings} | Cost per serving: ₹{cost_per_serving}
 
 ===== SCORING DATA =====
 Overall Score: {overall_score}/10
@@ -205,6 +207,16 @@ Clinical Research Summary: {clinical_summary}
 6. EVERY SENTENCE MUST TELL THE READER SOMETHING NEW. Cut filler ruthlessly. No "it's worth noting", no "it should be mentioned", no "consumers might find".
 
 7. BE OPINIONATED. If it's bad, say "skip this". If it's great, say "buy this". If it's mid, say exactly who it's for and who should look elsewhere.
+
+8. ONLY DISCUSS PRIMARY INGREDIENTS FOR THE CATEGORY. This is critical:
+   - Protein products: discuss protein, BCAAs, digestive enzymes. Do NOT mention calcium, iron, sodium as "under-dosed" — they're incidental nutrients, not why someone buys protein.
+   - Multivitamins: discuss vitamins and minerals. 
+   - Pre-workouts: discuss caffeine, beta-alanine, citrulline, creatine.
+   - Ashwagandha: discuss ashwagandha, adaptogens.
+   - Fish Oil/Omega-3: discuss EPA, DHA, omega-3 content.
+   If an ingredient appears but isn't primary for this category, ignore it in dosing analysis.
+
+9. PRICE PER SERVING IS MANDATORY. Always include "At ₹X per serving..." in the VALUE section. If price data is provided above, calculate and use it.
 
 ===== REVIEW STRUCTURE =====
 
@@ -262,10 +274,25 @@ def generate_review(product, scores, research):
     if not client:
         raise RuntimeError("OpenAI client not initialized - check OPENAI_API_KEY")
 
+    # Calculate price per serving
+    price = product.get("MRP (₹)")
+    servings = product.get("Servings Per Pack")
+    cost_per_serving = None
+    if price and servings and servings > 0:
+        cost_per_serving = round(price / servings, 2)
+    
+    # Use existing cost per serving if we calculated one, otherwise use what's in Airtable
+    if not cost_per_serving:
+        cost_per_serving = product.get("Cost Per Serving (₹)")
+
     # Build prompt with all data (including enhanced sentiment fields)
     prompt = REVIEW_PROMPT.format(
         brand=product.get("Brand", "Unknown"),
         product_name=product.get("Product Name", "Unknown"),
+        category=product.get("Category", "Unknown"),
+        price=price if price else "Not available",
+        servings=servings if servings else "Not available",
+        cost_per_serving=cost_per_serving if cost_per_serving else "Not available",
         overall_score=scores.get("Score Overall", "N/A"),
         formula_score=scores.get("Score Formula", "N/A"),
         dosing_score=scores.get("Score Dosing", "N/A"),
