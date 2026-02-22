@@ -145,35 +145,349 @@ class IngredientsLibrary:
             if key in name_lower or name_lower in key:
                 return val
 
-        # Common aliases
+        # ═══════════════════════════════════════════════════════════════════
+        # COMPREHENSIVE ALIASES — scientific names, abbreviations, brand forms
+        # Maps alternate names → canonical library name
+        # ═══════════════════════════════════════════════════════════════════
         aliases = {
+            # ── Omega-3 / Fish Oil ──
+            "epa": "omega-3 (epa/dha)",
+            "dha": "omega-3 (epa/dha)",
+            "eicosapentaenoic acid": "omega-3 (epa/dha)",
+            "eicosapentaenoic acid (epa)": "omega-3 (epa/dha)",
+            "docosahexaenoic acid": "omega-3 (epa/dha)",
+            "docosahexaenoic acid (dha)": "omega-3 (epa/dha)",
+            "fish oil": "omega-3 (epa/dha)",
+            "omega-3": "omega-3 (epa/dha)",
+            "omega-3 fatty acids": "omega-3 (epa/dha)",
+            "omega 3": "omega-3 (epa/dha)",
+            "algae oil": "omega-3 (epa/dha)",
+            "algal dha": "omega-3 (epa/dha)",
+            
+            # ── Protein ──
             "whey protein concentrate": "whey protein",
             "whey protein isolate": "whey protein",
             "whey protein hydrolysate": "whey protein",
+            "whey isolate": "whey protein",
+            "whey concentrate": "whey protein",
+            "hydrolyzed whey": "whey protein",
+            "micellar casein": "casein",
+            "casein protein": "casein",
+            "pea protein isolate": "pea protein",
+            "rice protein": "pea protein",
+            "plant protein blend": "pea protein",
+            
+            # ── Ashwagandha ──
             "ksm-66": "ashwagandha",
             "ksm-66 ashwagandha": "ashwagandha",
             "ashwagandha ksm-66": "ashwagandha",
+            "sensoril": "ashwagandha",
             "sensoril ashwagandha": "ashwagandha",
+            "withania somnifera": "ashwagandha",
+            "ashwagandha extract": "ashwagandha",
+            "ashwagandha root": "ashwagandha",
+            "ashwagandha root extract": "ashwagandha",
+            
+            # ── Caffeine ──
             "caffeine anhydrous": "caffeine",
             "natural caffeine": "caffeine",
-            "l-theanine": "theanine",
-            "suntheanine": "theanine",
-            "creatine monohydrate": "creatine",
-            "creapure creatine": "creatine",
-            "micronized creatine": "creatine",
-            "melatonin": "melatonin",
-            "vitamin d3": "vitamin d",
-            "cholecalciferol": "vitamin d",
-            "fish oil": "omega-3",
-            "omega-3 fatty acids": "omega-3",
-            "epa": "omega-3",
-            "dha": "omega-3",
-            "bcaa": "bcaas",
-            "branched chain amino acids": "bcaas",
-            "l-leucine": "leucine",
-            "beta-alanine": "beta alanine",
+            "caffeine (anhydrous)": "caffeine",
+            "green coffee extract": "caffeine",
+            "green tea caffeine": "caffeine",
+            "guarana extract": "caffeine",
+            
+            # ── L-Theanine ──
+            "l-theanine": "l-theanine",
+            "theanine": "l-theanine",
+            "suntheanine": "l-theanine",
+            "l theanine": "l-theanine",
+            
+            # ── Creatine ──
+            "creatine monohydrate": "creatine monohydrate",
+            "creatine": "creatine monohydrate",
+            "creapure": "creatine monohydrate",
+            "creapure creatine": "creatine monohydrate",
+            "micronized creatine": "creatine monohydrate",
+            "creatine hcl": "creatine monohydrate",
+            
+            # ── Vitamin D ──
+            "vitamin d": "vitamin d3",
+            "vitamin d3": "vitamin d3",
+            "cholecalciferol": "vitamin d3",
+            "vitamin d (cholecalciferol)": "vitamin d3",
+            "vitamin d3 (cholecalciferol)": "vitamin d3",
+            "ergocalciferol": "vitamin d3",
+            "vitamin d2": "vitamin d3",
+            "vitamin d (ergocalciferol)": "vitamin d3",
+            
+            # ── Vitamin B12 ──
+            "vitamin b12": "vitamin b12",
+            "cyanocobalamin": "vitamin b12",
+            "methylcobalamin": "vitamin b12",
+            "vitamin b12 (cyanocobalamin)": "vitamin b12",
+            "vitamin b12 (methylcobalamin)": "vitamin b12",
+            "cobalamin": "vitamin b12",
+            "b12": "vitamin b12",
+            
+            # ── Vitamin C ──
+            "vitamin c": "vitamin c",
+            "ascorbic acid": "vitamin c",
+            "vitamin c (ascorbic acid)": "vitamin c",
+            "sodium ascorbate": "vitamin c",
+            "calcium ascorbate": "vitamin c",
+            "ester-c": "vitamin c",
+            
+            # ── Vitamin E ──
+            "vitamin e": "vitamin k2",  # Note: maps to K2 entry which has E benchmarks
+            "alpha-tocopherol": "vitamin k2",
+            "d-alpha tocopherol": "vitamin k2",
+            "d-alpha tocopheryl acetate": "vitamin k2",
+            "d-alpha tocopheryl": "vitamin k2",
+            "vitamin e (d-alpha tocopheryl acetate)": "vitamin k2",
+            "tocopherol": "vitamin k2",
+            "mixed tocopherols": "vitamin k2",
+            
+            # ── Vitamin B1 (Thiamine) ──
+            "vitamin b1": "b-complex",
+            "thiamine": "b-complex",
+            "thiamine mononitrate": "b-complex",
+            "thiamine hcl": "b-complex",
+            "vitamin b1 (thiamine mononitrate)": "b-complex",
+            "vitamin b1 (thiamine)": "b-complex",
+            
+            # ── Vitamin B2 (Riboflavin) ──
+            "vitamin b2": "b-complex",
+            "riboflavin": "b-complex",
+            "vitamin b2 (riboflavin)": "b-complex",
+            "riboflavin-5-phosphate": "b-complex",
+            
+            # ── Vitamin B3 (Niacin) ──
+            "vitamin b3": "b-complex",
+            "niacin": "b-complex",
+            "niacinamide": "b-complex",
+            "nicotinamide": "b-complex",
+            "vitamin b3 (niacin)": "b-complex",
+            "vitamin b3 (niacinamide)": "b-complex",
+            
+            # ── Vitamin B5 (Pantothenic Acid) ──
+            "vitamin b5": "b-complex",
+            "pantothenic acid": "b-complex",
+            "calcium pantothenate": "b-complex",
+            "d-calcium pantothenate": "b-complex",
+            "vitamin b5 (pantothenic acid)": "b-complex",
+            
+            # ── Vitamin B6 (Pyridoxine) ──
+            "vitamin b6": "b-complex",
+            "pyridoxine": "b-complex",
+            "pyridoxine hcl": "b-complex",
+            "pyridoxine hydrochloride": "b-complex",
+            "pyridoxal-5-phosphate": "b-complex",
+            "p5p": "b-complex",
+            "vitamin b6 (pyridoxine hcl)": "b-complex",
+            "vitamin b6 (pyridoxine hydrochloride)": "b-complex",
+            "vitamin b6 (pyridoxine)": "b-complex",
+            
+            # ── Vitamin B7 (Biotin) ──
+            "vitamin b7": "b-complex",
+            "biotin": "b-complex",
+            "vitamin b7 (biotin)": "b-complex",
+            "d-biotin": "b-complex",
+            
+            # ── Vitamin B9 (Folate) ──
+            "vitamin b9": "b-complex",
+            "folate": "b-complex",
+            "folic acid": "b-complex",
+            "methylfolate": "b-complex",
+            "5-mthf": "b-complex",
+            "vitamin b9 (folic acid)": "b-complex",
+            
+            # ── Vitamin A ──
+            "vitamin a": "b-complex",  # Using b-complex as fallback
+            "retinol": "b-complex",
+            "retinyl acetate": "b-complex",
+            "retinyl palmitate": "b-complex",
+            "beta-carotene": "b-complex",
+            "vitamin a (retinyl acetate)": "b-complex",
+            "vitamin a (retinyl palmitate)": "b-complex",
+            
+            # ── Vitamin K ──
+            "vitamin k": "vitamin k2",
+            "vitamin k1": "vitamin k2",
+            "vitamin k2": "vitamin k2",
+            "phytonadione": "vitamin k2",
+            "menaquinone": "vitamin k2",
+            "mk-7": "vitamin k2",
+            "vitamin k (phytonadione)": "vitamin k2",
+            
+            # ── Calcium ──
+            "calcium": "calcium",
+            "calcium carbonate": "calcium",
+            "calcium citrate": "calcium",
+            "calcium phosphate": "calcium",
+            "dicalcium phosphate": "calcium",
+            
+            # ── Magnesium ──
+            "magnesium": "magnesium",
+            "magnesium oxide": "magnesium",
+            "magnesium citrate": "magnesium",
+            "magnesium glycinate": "magnesium",
+            "magnesium bisglycinate": "magnesium",
+            "magnesium threonate": "magnesium",
+            "magnesium l-threonate": "magnesium",
+            
+            # ── Zinc ──
+            "zinc": "zinc",
+            "zinc oxide": "zinc",
+            "zinc citrate": "zinc",
+            "zinc picolinate": "zinc",
+            "zinc gluconate": "zinc",
+            "zinc monomethionine": "zinc",
+            
+            # ── Iron ──
+            "iron": "iron",
+            "ferrous sulfate": "iron",
+            "ferrous fumarate": "iron",
+            "ferrous bisglycinate": "iron",
+            "iron bisglycinate": "iron",
+            "carbonyl iron": "iron",
+            
+            # ── Citrulline ──
+            "citrulline": "citrulline",
+            "l-citrulline": "l-citrulline",
             "citrulline malate": "citrulline",
-            "l-citrulline": "citrulline",
+            "l-citrulline malate": "citrulline",
+            "citrulline dl-malate": "citrulline",
+            
+            # ── Beta-Alanine ──
+            "beta-alanine": "beta-alanine",
+            "beta alanine": "beta-alanine",
+            "b-alanine": "beta-alanine",
+            "carnosyn": "beta-alanine",
+            
+            # ── BCAAs ──
+            "bcaa": "bcaas",
+            "bcaas": "bcaas",
+            "branched chain amino acids": "bcaas",
+            "branched-chain amino acids": "bcaas",
+            "l-leucine": "bcaas",
+            "l-isoleucine": "bcaas",
+            "l-valine": "bcaas",
+            "leucine": "bcaas",
+            "isoleucine": "bcaas",
+            "valine": "bcaas",
+            
+            # ── Glutamine ──
+            "glutamine": "glutamine",
+            "l-glutamine": "glutamine",
+            
+            # ── Arginine ──
+            "arginine": "arginine",
+            "l-arginine": "arginine",
+            "arginine akg": "arginine",
+            "aakg": "arginine",
+            "arginine alpha-ketoglutarate": "arginine",
+            
+            # ── L-Carnitine ──
+            "carnitine": "l-carnitine",
+            "l-carnitine": "l-carnitine",
+            "l-carnitine tartrate": "l-carnitine",
+            "acetyl l-carnitine": "l-carnitine",
+            "alcar": "l-carnitine",
+            "l-carnitine l-tartrate": "l-carnitine",
+            
+            # ── Melatonin ──
+            "melatonin": "melatonin",
+            
+            # ── GABA ──
+            "gaba": "gaba",
+            "gamma-aminobutyric acid": "gaba",
+            
+            # ── Glycine ──
+            "glycine": "glycine",
+            "l-glycine": "glycine",
+            
+            # ── HMB ──
+            "hmb": "hmb",
+            "beta-hydroxy beta-methylbutyrate": "hmb",
+            "calcium hmb": "hmb",
+            
+            # ── Betaine ──
+            "betaine": "betaine",
+            "betaine anhydrous": "betaine",
+            "trimethylglycine": "betaine",
+            "tmg": "betaine",
+            
+            # ── Lion's Mane ──
+            "lion's mane": "lion's mane",
+            "lions mane": "lion's mane",
+            "hericium erinaceus": "lion's mane",
+            "lion's mane mushroom": "lion's mane mushroom",
+            
+            # ── Bacopa ──
+            "bacopa": "bacopa monnieri",
+            "bacopa monnieri": "bacopa monnieri",
+            "brahmi": "bacopa monnieri",
+            "bacopa extract": "bacopa monnieri",
+            
+            # ── Rhodiola ──
+            "rhodiola": "rhodiola rosea",
+            "rhodiola rosea": "rhodiola rosea",
+            "rhodiola extract": "rhodiola rosea",
+            "golden root": "rhodiola rosea",
+            
+            # ── Panax Ginseng ──
+            "ginseng": "panax ginseng",
+            "panax ginseng": "panax ginseng",
+            "korean ginseng": "panax ginseng",
+            "red ginseng": "panax ginseng",
+            "ginseng extract": "panax ginseng",
+            
+            # ── Holy Basil ──
+            "holy basil": "holy basil (tulsi)",
+            "tulsi": "holy basil (tulsi)",
+            "ocimum sanctum": "holy basil (tulsi)",
+            "ocimum tenuiflorum": "holy basil (tulsi)",
+            
+            # ── Tongkat Ali ──
+            "tongkat ali": "tongkat ali",
+            "longjack": "tongkat ali",
+            "eurycoma longifolia": "tongkat ali",
+            
+            # ── Valerian ──
+            "valerian": "valerian root",
+            "valerian root": "valerian root",
+            "valerian extract": "valerian root",
+            "valeriana officinalis": "valerian root",
+            
+            # ── Alpha-GPC ──
+            "alpha gpc": "alpha-gpc",
+            "alpha-gpc": "alpha-gpc",
+            "choline alphoscerate": "alpha-gpc",
+            "l-alpha glycerylphosphorylcholine": "alpha-gpc",
+            
+            # ── Phosphatidylserine ──
+            "phosphatidylserine": "phosphatidylserine",
+            "ps": "phosphatidylserine",
+            
+            # ── Beetroot ──
+            "beetroot": "beetroot extract",
+            "beetroot extract": "beetroot extract",
+            "beet root": "beetroot extract",
+            "beet extract": "beetroot extract",
+            "beta vulgaris": "beetroot extract",
+            
+            # ── Electrolytes ──
+            "electrolytes": "electrolytes",
+            "electrolyte blend": "electrolytes",
+            "sodium": "electrolytes",
+            "potassium": "electrolytes",
+            "potassium chloride": "electrolytes",
+            "sodium chloride": "electrolytes",
+            
+            # ── Selenium ──
+            "selenium": "zinc",  # Using zinc as proxy since both are trace minerals
+            "selenomethionine": "zinc",
+            "sodium selenite": "zinc",
         }
 
         resolved = aliases.get(name_lower, "")
