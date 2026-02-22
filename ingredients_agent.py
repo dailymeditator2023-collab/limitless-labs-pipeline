@@ -46,6 +46,59 @@ logging.basicConfig(
 log = logging.getLogger("ingredients-agent")
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# RDA BENCHMARKS (Indian ICMR / International) — for Multivitamins
+# Two-tier system: therapeutic_dose for standalone, rda_dose for multivitamins
+# ═══════════════════════════════════════════════════════════════════════════════
+
+RDA_BENCHMARKS = {
+    # Vitamins — (low, high) in same units as product labels
+    "vitamin a": ("600mcg", "900mcg"),
+    "vitamin b1": ("1.0mg", "1.4mg"),
+    "vitamin b2": ("1.1mg", "1.6mg"),
+    "vitamin b3": ("14mg", "18mg"),
+    "niacinamide": ("14mg", "18mg"),
+    "vitamin b5": ("5mg", "5mg"),
+    "pantothenic acid": ("5mg", "5mg"),
+    "vitamin b6": ("1.3mg", "2.0mg"),
+    "vitamin b7": ("30mcg", "150mcg"),
+    "biotin": ("30mcg", "150mcg"),
+    "vitamin b9": ("200mcg", "400mcg"),
+    "folate": ("200mcg", "400mcg"),
+    "folic acid": ("200mcg", "400mcg"),
+    "vitamin b12": ("1mcg", "2.4mcg"),
+    "vitamin c": ("40mg", "90mg"),
+    "vitamin d": ("400IU", "800IU"),
+    "vitamin d3": ("400IU", "800IU"),
+    "vitamin e": ("7mg", "15mg"),
+    "vitamin k": ("55mcg", "120mcg"),
+    "vitamin k2": ("55mcg", "120mcg"),
+    
+    # Minerals
+    "calcium": ("600mg", "1000mg"),
+    "magnesium": ("300mg", "420mg"),
+    "zinc": ("8mg", "14mg"),
+    "iron": ("8mg", "18mg"),
+    "selenium": ("40mcg", "55mcg"),
+    "copper": ("0.9mg", "2mg"),
+    "manganese": ("1.8mg", "2.3mg"),
+    "chromium": ("25mcg", "35mcg"),
+    "iodine": ("150mcg", "150mcg"),
+    "phosphorus": ("700mg", "1000mg"),
+    "potassium": ("2600mg", "3400mg"),
+    
+    # Omega-3 (maintenance, not therapeutic)
+    "omega-3": ("250mg", "500mg"),
+    "omega-3 (epa/dha)": ("250mg", "500mg"),
+    "epa": ("125mg", "250mg"),
+    "dha": ("125mg", "250mg"),
+    "fish oil": ("500mg", "1000mg"),
+    
+    # B-Complex general
+    "b-complex": ("1mg", "2mg"),
+}
+
+
 # ── Airtable Client (shared with research_agent) ─────────────────────
 
 class AirtableClient:
@@ -799,9 +852,17 @@ def parse_ingredients_raw(raw_text: str) -> list:
 # ── Ingredient Analyzer ───────────────────────────────────────────────
 
 def analyze_ingredient(name: str, claimed_dose: str, library: IngredientsLibrary,
-                       dry_run: bool = False) -> dict:
+                       dry_run: bool = False, use_rda: bool = False) -> dict:
     """
     Analyze a single ingredient against the library.
+    
+    Args:
+        name: Ingredient name
+        claimed_dose: Dose from product label
+        library: IngredientsLibrary instance
+        dry_run: If True, don't write to Airtable
+        use_rda: If True, use RDA benchmarks (for multivitamins) instead of therapeutic
+    
     Returns structured assessment dict.
     """
     result = {
@@ -811,8 +872,31 @@ def analyze_ingredient(name: str, claimed_dose: str, library: IngredientsLibrary
         "assessment": "Unknown",
         "notes": "",
     }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # For multivitamins: use RDA benchmarks instead of therapeutic
+    # ═══════════════════════════════════════════════════════════════════
+    if use_rda:
+        name_lower = name.lower().strip()
+        # Try to find RDA benchmark
+        rda = None
+        for rda_key, rda_val in RDA_BENCHMARKS.items():
+            if rda_key in name_lower or name_lower in rda_key:
+                rda = rda_val
+                break
+        
+        if rda:
+            rda_low, rda_high = rda
+            result["clinical_benchmark"] = f"{rda_low}–{rda_high} (RDA)"
+            if claimed_dose:
+                result["assessment"] = _assess_dose(claimed_dose, rda_low, rda_high)
+            else:
+                result["assessment"] = "Not Assessed"
+            result["notes"] = "Assessed against RDA (multivitamin standard)"
+            return result
+        # If no RDA found, fall through to therapeutic benchmarks
 
-    # Look up in library
+    # Look up in library (therapeutic benchmarks)
     lib_entry = library.lookup(name)
 
     if lib_entry:
@@ -1041,12 +1125,30 @@ def process_product(product_record: dict, research_records: list,
         log.warning(f"  Could not parse any ingredients from: {raw_ingredients[:100]}...")
         return False
 
+    # ═══════════════════════════════════════════════════════════════════
+    # Detect product category — use RDA benchmarks for multivitamins
+    # ═══════════════════════════════════════════════════════════════════
+    category = fields.get("Category", "").lower()
+    use_rda = False
+    
+    multivitamin_indicators = ["multivitamin", "multi-vitamin", "multi vitamin", 
+                               "vitamin mineral", "vitamins minerals", "daily vitamin",
+                               "mb-vite", "mbvite", "one-a-day", "centrum", "supradyn"]
+    
+    # Check category or product name for multivitamin indicators
+    combined_text = f"{category} {product_name}".lower()
+    for indicator in multivitamin_indicators:
+        if indicator in combined_text:
+            use_rda = True
+            log.info(f"  📊 Detected MULTIVITAMIN — using RDA benchmarks")
+            break
+
     # Analyze each ingredient
     structured = []
     for ing in parsed:
         log.info(f"  Analyzing: {ing['name']} ({ing['claimed_dose'] or 'no dose'})")
         analysis = analyze_ingredient(
-            ing["name"], ing["claimed_dose"], library, dry_run=dry_run
+            ing["name"], ing["claimed_dose"], library, dry_run=dry_run, use_rda=use_rda
         )
         structured.append(analysis)
 
