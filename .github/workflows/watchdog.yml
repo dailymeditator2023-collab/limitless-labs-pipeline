@@ -1,0 +1,123 @@
+name: Watchdog — Review Leo's Changes
+
+# Triggers whenever anyone pushes to main
+on:
+  push:
+    branches: [main]
+
+jobs:
+  watchdog:
+    name: Run Watchdog Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to show diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Show what changed in this push
+        id: changes
+        run: |
+          echo "## Files Changed" > changes_summary.md
+          echo '```' >> changes_summary.md
+          git diff --stat HEAD~1 >> changes_summary.md 2>/dev/null || echo "First commit — no diff available" >> changes_summary.md
+          echo '```' >> changes_summary.md
+          echo "" >> changes_summary.md
+          echo "## Changed Files Detail" >> changes_summary.md
+          git diff --name-status HEAD~1 >> changes_summary.md 2>/dev/null || true
+          cat changes_summary.md
+
+      - name: Run watchdog checks
+        id: watchdog
+        run: |
+          python scripts/watchdog_checks.py 2>&1 | tee watchdog_output.txt
+        continue-on-error: true
+
+      - name: Post results as GitHub Issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read outputs
+            let watchdogOutput = 'No output captured';
+            try {
+              watchdogOutput = fs.readFileSync('watchdog_output.txt', 'utf8');
+            } catch (e) {}
+
+            let changesOutput = 'No changes captured';
+            try {
+              changesOutput = fs.readFileSync('changes_summary.md', 'utf8');
+            } catch (e) {}
+
+            // Determine status
+            const watchdogFailed = '${{ steps.watchdog.outcome }}' === 'failure';
+            const statusEmoji = watchdogFailed ? '🔴' : '🟢';
+            const statusText = watchdogFailed ? 'Issues Found — Action Required' : 'All Clear';
+
+            // Get commit info
+            const sha = context.sha.substring(0, 7);
+            const commitMsg = context.payload.head_commit?.message || 'Unknown';
+            const pusher = context.payload.pusher?.name || 'Unknown';
+
+            const title = `${statusEmoji} Watchdog Report: ${statusText} (${sha})`;
+
+            const body = `## Watchdog Report
+
+            **Pushed by:** ${pusher}
+            **Commit:** \`${sha}\` — ${commitMsg}
+            **Status:** ${statusEmoji} ${statusText}
+
+            ---
+
+            ${changesOutput}
+
+            ---
+
+            ## Watchdog Check Results
+
+            \`\`\`
+            ${watchdogOutput}
+            \`\`\`
+
+            ---
+
+            ### Recommended Actions
+
+            ${watchdogFailed ? `
+            **Issues were detected. Please review the FAIL items above.**
+
+            1. Fix any syntax errors in Python files
+            2. Check for hardcoded secrets and move them to environment variables
+            3. Verify scoring weights sum to 100%
+            4. Ensure Smart Caffeine products remain excluded
+            ` : `
+            **No issues detected.** Leo's changes passed all automated checks.
+
+            Optional next steps:
+            - Review the changed files for logic correctness
+            - Verify Airtable field names match if schema was updated
+            - Run a manual test with \`python3 batch_rescore.py\` if scoring logic changed
+            `}
+
+            ---
+            *Generated automatically by the Limitless Labs Watchdog*
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: watchdogFailed ? ['watchdog', 'needs-review'] : ['watchdog', 'all-clear']
+            });
