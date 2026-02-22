@@ -93,22 +93,40 @@ def fetch_linked_record(table_id, record_id):
 
 def fetch_latest_score(product_id):
     """Fetch the most recent score record for a product (sorted by Created desc)"""
-    # Query scores table filtered by product, sorted by created date descending
-    resp = requests.get(
-        f"https://api.airtable.com/v0/{BASE_ID}/{SCORES_TABLE}",
-        headers=HEADERS,
-        params={
-            "filterByFormula": f"FIND('{product_id}', ARRAYJOIN({{Product}}))",
-            "sort[0][field]": "Created",
-            "sort[0][direction]": "desc",
-            "maxRecords": 1
-        }
-    )
-    if resp.status_code == 200:
-        records = resp.json().get("records", [])
-        if records:
-            return records[0].get("fields", {})
-    return {}
+    # ARRAYJOIN formula doesn't work reliably for linked records
+    # Instead, fetch all scores and filter manually
+    all_scores = []
+    offset = None
+    
+    while True:
+        params = {"pageSize": 100}
+        if offset:
+            params["offset"] = offset
+        resp = requests.get(
+            f"https://api.airtable.com/v0/{BASE_ID}/{SCORES_TABLE}",
+            headers=HEADERS,
+            params=params
+        )
+        if resp.status_code != 200:
+            break
+        data = resp.json()
+        all_scores.extend(data.get("records", []))
+        offset = data.get("offset")
+        if not offset:
+            break
+    
+    # Filter scores that link to this product
+    matching = [
+        s for s in all_scores 
+        if product_id in s.get("fields", {}).get("Product", [])
+    ]
+    
+    if not matching:
+        return {}
+    
+    # Sort by created time descending and return latest
+    matching.sort(key=lambda x: x.get("createdTime", ""), reverse=True)
+    return matching[0].get("fields", {})
 
 
 def update_product(record_id, review, summary):
