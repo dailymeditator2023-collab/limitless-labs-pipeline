@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+*.env
+.secrets/
+secrets/
+*.secret
+*.key
+
+# API keys and tokens
+*token*
+*credential*
+*apikey*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.eggs/
+*.egg-info/
+*.egg
+
+# Logs and temp files
+*.log
+*.tmp
+/tmp/
+logs/
+
+# Chrome profile copies
+/chrome-*/
+
+# Debug files
+debug_*.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test_*.log
+composition_run_*.log
+amazon_overnight_*.log
