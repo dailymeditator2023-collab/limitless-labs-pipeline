@@ -1070,7 +1070,8 @@ def main():
     if args.product:
         # Research a specific product
         log.info(f"Searching for product: {args.product}")
-        formula = f"SEARCH(LOWER('{args.product.lower()}'), LOWER({{Product Name}}))"
+        safe_name = args.product.lower().replace("'", "\\'")
+        formula = f"SEARCH(LOWER('{safe_name}'), LOWER({{Product Name}}))"
         products = airtable.list_records(TBL_PRODUCTS, formula=formula, max_records=1)
         if not products:
             log.error(f"Product not found in Airtable: {args.product}")

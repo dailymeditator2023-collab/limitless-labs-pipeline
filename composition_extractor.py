@@ -535,7 +535,8 @@ def fetch_products_no_label_found(limit=10):
 
 def search_product(query):
     """Search for a specific product by name"""
-    formula = f"SEARCH(LOWER('{query.lower()}'), LOWER({{Product Name}}))"
+    safe_query = query.lower().replace("'", "\\'")
+    formula = f"SEARCH(LOWER('{safe_query}'), LOWER({{Product Name}}))"
     resp = requests.get(
         f"https://api.airtable.com/v0/{BASE_ID}/{PRODUCTS_TABLE}",
         headers=AT_HEADERS,

@@ -291,14 +291,14 @@ class IngredientsLibrary:
             "ester-c": "vitamin c",
             
             # ── Vitamin E ──
-            "vitamin e": "vitamin k2",  # Note: maps to K2 entry which has E benchmarks
-            "alpha-tocopherol": "vitamin k2",
-            "d-alpha tocopherol": "vitamin k2",
-            "d-alpha tocopheryl acetate": "vitamin k2",
-            "d-alpha tocopheryl": "vitamin k2",
-            "vitamin e (d-alpha tocopheryl acetate)": "vitamin k2",
-            "tocopherol": "vitamin k2",
-            "mixed tocopherols": "vitamin k2",
+            "vitamin e": "vitamin e",
+            "alpha-tocopherol": "vitamin e",
+            "d-alpha tocopherol": "vitamin e",
+            "d-alpha tocopheryl acetate": "vitamin e",
+            "d-alpha tocopheryl": "vitamin e",
+            "vitamin e (d-alpha tocopheryl acetate)": "vitamin e",
+            "tocopherol": "vitamin e",
+            "mixed tocopherols": "vitamin e",
             
             # ── Vitamin B1 (Thiamine) ──
             "vitamin b1": "b-complex",
@@ -355,13 +355,13 @@ class IngredientsLibrary:
             "vitamin b9 (folic acid)": "b-complex",
             
             # ── Vitamin A ──
-            "vitamin a": "b-complex",  # Using b-complex as fallback
-            "retinol": "b-complex",
-            "retinyl acetate": "b-complex",
-            "retinyl palmitate": "b-complex",
-            "beta-carotene": "b-complex",
-            "vitamin a (retinyl acetate)": "b-complex",
-            "vitamin a (retinyl palmitate)": "b-complex",
+            "vitamin a": "vitamin a",
+            "retinol": "vitamin a",
+            "retinyl acetate": "vitamin a",
+            "retinyl palmitate": "vitamin a",
+            "beta-carotene": "vitamin a",
+            "vitamin a (retinyl acetate)": "vitamin a",
+            "vitamin a (retinyl palmitate)": "vitamin a",
             
             # ── Vitamin K ──
             "vitamin k": "vitamin k2",
@@ -538,9 +538,9 @@ class IngredientsLibrary:
             "sodium chloride": "electrolytes",
             
             # ── Selenium ──
-            "selenium": "zinc",  # Using zinc as proxy since both are trace minerals
-            "selenomethionine": "zinc",
-            "sodium selenite": "zinc",
+            "selenium": "selenium",
+            "selenomethionine": "selenium",
+            "sodium selenite": "selenium",
         }
 
         resolved = aliases.get(name_lower, "")
@@ -1242,7 +1242,8 @@ def main():
 
     # Get products to process
     if args.product:
-        formula = f"SEARCH(LOWER('{args.product.lower()}'), LOWER({{Product Name}}))"
+        safe_name = args.product.lower().replace("'", "\\'")
+        formula = f"SEARCH(LOWER('{safe_name}'), LOWER({{Product Name}}))"
         products = airtable.list_records(TBL_PRODUCTS, formula=formula, max_records=1)
         if not products:
             log.error(f"Product not found: {args.product}")

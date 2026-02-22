@@ -470,7 +470,7 @@ def calculate_overall(formula: float, dosing: float, value: float,
 def determine_verdict(overall: float) -> str:
     """Map overall score to verdict label."""
     if overall >= 8.0:
-        return "Recommended"
+        return "Highly Recommended"
     elif overall >= 7.5:
         return "Recommended"
     elif overall >= 5.0:
@@ -638,7 +638,8 @@ def main():
 
     # Get products
     if args.product:
-        formula = f"SEARCH(LOWER('{args.product.lower()}'), LOWER({{Product Name}}))"
+        safe_name = args.product.lower().replace("'", "\\'")
+        formula = f"SEARCH(LOWER('{safe_name}'), LOWER({{Product Name}}))"
         products = airtable.list_records(TBL_PRODUCTS, formula=formula, max_records=1)
         if not products:
             log.error(f"Product not found: {args.product}")
