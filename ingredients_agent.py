@@ -349,6 +349,21 @@ def parse_ingredients_raw(raw_text: str) -> list:
         r'^\d+\s*(scoop|tablet|capsule|serving)',  # "1 scoop (30g)" metadata
     ]
     
+    # ═══════════════════════════════════════════════════════════════════
+    # Nutrition facts / macros — NOT supplement ingredients, always skip
+    # ═══════════════════════════════════════════════════════════════════
+    nutrition_facts_skip = [
+        'protein', 'total protein',
+        'fat', 'total fat', 'saturated fat', 'trans fat', 'unsaturated fat',
+        'carbohydrates', 'total carbohydrates', 'carbohydrate',
+        'calories', 'energy', 'energy value',
+        'cholesterol',
+        'sodium',
+        'dietary fiber', 'dietary fibre', 'fiber', 'fibre',
+        'sugar', 'total sugar', 'total sugars', 'added sugar', 'added sugars',
+        'each soft gel contains', 'each capsule contains', 'each tablet contains',
+    ]
+    
     cleaned_lines = []
     for line in raw_text.split('\n'):
         line_stripped = line.strip()
@@ -435,6 +450,15 @@ def parse_ingredients_raw(raw_text: str) -> list:
                         if re.match(pattern, clean_name.lower()):
                             is_valid_name = False
                             break
+                    
+                    # Skip nutrition facts / macros (not supplement ingredients)
+                    if is_valid_name:
+                        clean_name_lower = clean_name.lower().strip()
+                        if clean_name_lower in nutrition_facts_skip:
+                            is_valid_name = False
+                        # Also check partial matches for "each X contains"
+                        if 'each' in clean_name_lower and 'contains' in clean_name_lower:
+                            is_valid_name = False
                     
                     if is_valid_name:
                         ingredients.append({
