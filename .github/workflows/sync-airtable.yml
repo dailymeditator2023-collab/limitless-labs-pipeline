@@ -1,0 +1,134 @@
+name: Sync to Airtable
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Sync action'
+        required: true
+        default: 'status'
+        type: choice
+        options:
+          - status
+          - push-scores
+          - pull-products
+  workflow_run:
+    workflows: ["Run Scoring Pipeline"]
+    types: [completed]
+
+env:
+  AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+  AIRTABLE_BASE_ID: appUOcZUDNPzstZlv
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install requests
+      
+      - name: Check Airtable Connection
+        if: ${{ github.event.inputs.action == 'status' || github.event_name == 'workflow_run' }}
+        run: |
+          python << 'EOF'
+          import requests
+          import os
+          
+          token = os.environ.get('AIRTABLE_TOKEN')
+          base_id = os.environ.get('AIRTABLE_BASE_ID')
+          
+          if not token:
+              print("❌ AIRTABLE_TOKEN not set")
+              exit(1)
+          
+          headers = {'Authorization': f'Bearer {token}'}
+          
+          # Check Products table
+          url = f'https://api.airtable.com/v0/{base_id}/Products'
+          resp = requests.get(url, headers=headers, params={'pageSize': 1})
+          
+          if resp.status_code == 200:
+              print("✅ Airtable connection successful")
+              print(f"Products table accessible")
+          else:
+              print(f"❌ Airtable error: {resp.status_code}")
+              print(resp.text)
+              exit(1)
+          
+          # Check Scores table
+          url = f'https://api.airtable.com/v0/{base_id}/Scores'
+          resp = requests.get(url, headers=headers, params={'pageSize': 1})
+          
+          if resp.status_code == 200:
+              print("✅ Scores table accessible")
+          else:
+              print(f"⚠️ Scores table issue: {resp.status_code}")
+          EOF
+      
+      - name: Push Scores to Airtable
+        if: ${{ github.event.inputs.action == 'push-scores' }}
+        run: |
+          echo "Pushing scores to Airtable..."
+          # This would run the scoring agent with --sync flag
+          python scoring_agent.py --sync 2>/dev/null || echo "Sync flag not implemented yet"
+      
+      - name: Pull Products List
+        if: ${{ github.event.inputs.action == 'pull-products' }}
+        run: |
+          python << 'EOF'
+          import requests
+          import os
+          import json
+          
+          token = os.environ.get('AIRTABLE_TOKEN')
+          base_id = os.environ.get('AIRTABLE_BASE_ID')
+          headers = {'Authorization': f'Bearer {token}'}
+          
+          url = f'https://api.airtable.com/v0/{base_id}/Products'
+          products = []
+          offset = None
+          
+          while True:
+              params = {'pageSize': 100}
+              if offset:
+                  params['offset'] = offset
+              resp = requests.get(url, headers=headers, params=params)
+              data = resp.json()
+              products.extend(data.get('records', []))
+              offset = data.get('offset')
+              if not offset:
+                  break
+          
+          print(f"Found {len(products)} products")
+          
+          # Save to file
+          with open('products.json', 'w') as f:
+              json.dump([{
+                  'id': p['id'],
+                  'name': p.get('fields', {}).get('Product Name', 'Unknown'),
+                  'status': p.get('fields', {}).get('Review Status', '')
+              } for p in products], f, indent=2)
+          
+          print("Saved to products.json")
+          EOF
+      
+      - name: Upload Products List
+        if: ${{ github.event.inputs.action == 'pull-products' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: products-list
+          path: products.json
+      
+      - name: Summary
+        run: |
+          echo "## Airtable Sync Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Action: ${{ github.event.inputs.action || 'auto (post-pipeline)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY

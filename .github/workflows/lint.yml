@@ -1,0 +1,46 @@
+name: Lint & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: Check code formatting with Black
+        run: black --check --diff *.py
+        continue-on-error: true
+      
+      - name: Check import sorting with isort
+        run: isort --check-only --diff *.py
+        continue-on-error: true
+      
+      - name: Lint with flake8
+        run: |
+          # Stop on syntax errors or undefined names
+          flake8 *.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warnings (non-blocking)
+          flake8 *.py --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+      
+      - name: Check for common issues
+        run: |
+          echo "Checking for debug prints..."
+          ! grep -rn "print(" *.py --include="*.py" | grep -v "# debug" | grep -v "def print" || true
+          echo "Checking for hardcoded secrets..."
+          ! grep -rn "pat[A-Za-z0-9]" *.py || echo "⚠️ Possible hardcoded PAT found"

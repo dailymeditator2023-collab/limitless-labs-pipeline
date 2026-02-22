@@ -1,0 +1,58 @@
+name: PR Notifications
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR Opened
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        run: |
+          echo "## 🔔 New PR Opened" >> $GITHUB_STEP_SUMMARY
+          echo "**Title:** ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ github.event.pull_request.html_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Description" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.event.pull_request.body }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: PR Updated
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+        run: |
+          echo "## 🔄 PR Updated" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "New commits pushed to PR #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: PR Merged/Closed
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            echo "## ✅ PR Merged" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ PR Closed (not merged)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**PR:** ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Review Submitted
+        if: github.event_name == 'pull_request_review'
+        run: |
+          echo "## 👀 PR Review" >> $GITHUB_STEP_SUMMARY
+          echo "**Reviewer:** ${{ github.event.review.user.login }}" >> $GITHUB_STEP_SUMMARY
+          echo "**State:** ${{ github.event.review.state }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Comment Added
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+        run: |
+          echo "## 💬 New PR Comment" >> $GITHUB_STEP_SUMMARY
+          echo "**From:** ${{ github.event.comment.user.login }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** #${{ github.event.issue.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.event.comment.body }}" >> $GITHUB_STEP_SUMMARY

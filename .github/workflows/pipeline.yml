@@ -1,0 +1,70 @@
+name: Run Scoring Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_name:
+        description: 'Product name to score (leave empty for all)'
+        required: false
+        type: string
+      mode:
+        description: 'Pipeline mode'
+        required: true
+        default: 'score'
+        type: choice
+        options:
+          - score
+          - ingredients
+          - full
+  schedule:
+    # Run daily at 6 AM IST (00:30 UTC)
+    - cron: '30 0 * * *'
+
+env:
+  AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests openai aiohttp beautifulsoup4
+      
+      - name: Run Ingredients Agent
+        if: ${{ github.event.inputs.mode == 'ingredients' || github.event.inputs.mode == 'full' }}
+        run: |
+          if [ -n "${{ github.event.inputs.product_name }}" ]; then
+            python ingredients_agent.py --product "${{ github.event.inputs.product_name }}"
+          else
+            python ingredients_agent.py --limit 10
+          fi
+      
+      - name: Run Scoring Agent
+        if: ${{ github.event.inputs.mode == 'score' || github.event.inputs.mode == 'full' }}
+        run: |
+          if [ -n "${{ github.event.inputs.product_name }}" ]; then
+            python scoring_agent.py --product "${{ github.event.inputs.product_name }}"
+          else
+            python scoring_agent.py --limit 10
+          fi
+      
+      - name: Run Batch Rescore
+        if: ${{ github.event.inputs.mode == 'full' && github.event.inputs.product_name == '' }}
+        run: python batch_rescore.py
+      
+      - name: Summary
+        run: |
+          echo "## Pipeline Run Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Mode: ${{ github.event.inputs.mode || 'scheduled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Product: ${{ github.event.inputs.product_name || 'all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY
