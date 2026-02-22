@@ -424,7 +424,13 @@ def identify_and_extract_composition(images, brand="", product_name="", is_base6
 
 TASK:
 1. Find the image(s) that show the Supplement Facts panel, Nutrition Label, or Ingredient List
-2. Extract the COMPLETE composition in this exact format:
+2. Extract the COMPLETE composition in the EXACT format below
+
+⚠️ CRITICAL: Return ONLY the ingredient data in the specified format. 
+No preamble, no explanation, no introductory text like "Here's the extracted information".
+Start your response directly with "SERVING SIZE:" — nothing before it.
+
+FORMAT (follow exactly):
 
 SERVING SIZE: [e.g., 1 scoop (30g)]
 SERVINGS PER CONTAINER: [e.g., 30]

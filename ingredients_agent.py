@@ -295,20 +295,78 @@ def clean_ingredient_name(name: str) -> str:
 
 def parse_ingredients_raw(raw_text: str) -> list:
     """
-    Parse raw ingredient text (from Amazon scrape) into a list of
+    Parse raw ingredient text (from GPT composition extraction) into a list of
     {name, claimed_dose} dicts.
 
     Handles common formats:
     - "Whey Protein Concentrate 30g"
     - "Ashwagandha KSM-66 (600mg)"
-    - "Caffeine 200mg | L-Theanine 100mg"
-    - Bullet-separated Amazon descriptions
+    - "- Vitamin A (Retinyl Acetate): 600 mcg"
     """
     ingredients = []
     if not raw_text:
         return ingredients
 
-    # Pre-clean: remove markdown section headers that aren't ingredients
+    # ═══════════════════════════════════════════════════════════════════
+    # STEP 1: Strip GPT preamble — find where actual data starts
+    # ═══════════════════════════════════════════════════════════════════
+    # Look for common starting patterns that indicate actual ingredient data
+    data_start_patterns = [
+        r'^SERVING SIZE:',
+        r'^\*\*SERVING SIZE',
+        r'^PER SERVING:',
+        r'^\*\*PER SERVING',
+        r'^- [A-Z][a-z]+.*:\s*\d',  # "- Vitamin A: 600"
+    ]
+    
+    lines = raw_text.split('\n')
+    start_idx = 0
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        for pattern in data_start_patterns:
+            if re.match(pattern, line_stripped, re.IGNORECASE):
+                start_idx = i
+                break
+        if start_idx > 0:
+            break
+    
+    # If we found a start point, discard everything before it
+    if start_idx > 0:
+        raw_text = '\n'.join(lines[start_idx:])
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # STEP 2: Remove metadata lines that are NOT ingredients
+    # ═══════════════════════════════════════════════════════════════════
+    metadata_patterns = [
+        r'^\**\s*(SERVING SIZE|SERVINGS PER|PER CONTAINER|NUMBER OF SERVINGS)',
+        r'^\**\s*(TOTAL CALORIES|ENERGY VALUE|ENERGY)',
+        r'^\**\s*(OTHER INGREDIENTS|ALLERGEN|DIRECTIONS|STORAGE|WARNINGS?)',
+        r'^\**\s*(NUTRIENTS|VITAMINS|MINERALS|AMINO ACID BLEND|ENERGY BLEND)',
+        r'^\**\s*(IMMUNITY BLEND|STRESS.BLEND|PRO.BLEND)',
+        r'^\**\s*(Here\'s|The image|I can see|Looking at|This shows)',
+        r'^\**\s*(extracted information|supplement facts|nutrition label)',
+        r'^\d+\s*(scoop|tablet|capsule|serving)',  # "1 scoop (30g)" metadata
+    ]
+    
+    cleaned_lines = []
+    for line in raw_text.split('\n'):
+        line_stripped = line.strip()
+        # Skip empty lines
+        if not line_stripped:
+            continue
+        # Skip metadata
+        is_metadata = False
+        for pattern in metadata_patterns:
+            if re.match(pattern, line_stripped, re.IGNORECASE):
+                is_metadata = True
+                break
+        if not is_metadata:
+            cleaned_lines.append(line_stripped)
+    
+    raw_text = '\n'.join(cleaned_lines)
+    
+    # Pre-clean: remove markdown section headers
     raw_text = re.sub(r'\*\*(SERVING SIZE|SERVINGS|PER SERVING|PER CONTAINER|NUMBER OF|NUTRIENTS|ALLERGEN|OTHER INGREDIENTS|VITAMINS|MINERALS|AMINO ACID)[^*]*\*\*:?', '', raw_text, flags=re.IGNORECASE)
     
     # Split by common delimiters
@@ -361,29 +419,32 @@ def parse_ingredients_raw(raw_text: str) -> list:
 
             if name and len(name) > 2:
                 clean_name = clean_ingredient_name(name)
-                if clean_name and len(clean_name) > 1:
-                    ingredients.append({
-                        "name": clean_name,
-                        "claimed_dose": dose.strip(),
-                    })
+                dose_cleaned = dose.strip()
+                # ═══════════════════════════════════════════════════════════
+                # STEP 3: Validate — must have BOTH name AND numeric dose
+                # ═══════════════════════════════════════════════════════════
+                if clean_name and len(clean_name) > 1 and dose_cleaned:
+                    # Extra validation: name should look like an ingredient, not GPT text
+                    invalid_name_patterns = [
+                        r'^(here|the|this|i can|looking|image|extract|information)',
+                        r'^(serving|per|total|number|container)',
+                        r'^[\d\s]+$',  # Just numbers/spaces
+                    ]
+                    is_valid_name = True
+                    for pattern in invalid_name_patterns:
+                        if re.match(pattern, clean_name.lower()):
+                            is_valid_name = False
+                            break
+                    
+                    if is_valid_name:
+                        ingredients.append({
+                            "name": clean_name,
+                            "claimed_dose": dose_cleaned,
+                        })
         else:
-            # No dose found — might be a descriptive ingredient
-            # Check if it looks like an ingredient name
-            ingredient_signals = [
-                "protein", "whey", "casein", "creatine", "caffeine", "theanine",
-                "ashwagandha", "melatonin", "vitamin", "mineral", "omega",
-                "fish oil", "collagen", "probiotic", "extract", "powder",
-                "amino", "bcaa", "glutamine", "citrulline", "beta-alanine",
-                "magnesium", "zinc", "iron", "calcium", "selenium",
-                "biotin", "folate", "niacin", "riboflavin", "thiamine",
-            ]
-            if any(sig in part.lower() for sig in ingredient_signals):
-                clean_name = clean_ingredient_name(part[:80])
-                if clean_name and len(clean_name) > 1:
-                    ingredients.append({
-                        "name": clean_name,
-                        "claimed_dose": "",
-                    })
+            # No dose found — SKIP per validation rule (must have BOTH name AND dose)
+            # We no longer add ingredients without numeric doses
+            pass
 
     # Deduplicate by name
     seen = set()
